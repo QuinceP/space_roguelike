@@ -1,4 +1,5 @@
 import math
+import os
 import random
 import sys
 from pprint import pprint
@@ -9,7 +10,17 @@ from pygame.locals import *
 
 
 def load_image(name):
-    image = pygame.image.load(name).convert_alpha()
+    """ Load image and return image object"""
+    fullname = os.path.join('', name)
+    try:
+        image = pygame.image.load(fullname)
+        if image.get_alpha() is None:
+            image = image.convert()
+        else:
+            image = image.convert_alpha()
+    except pygame.error as message:
+        print('Cannot load image:', fullname)
+        raise SystemExit(message)
     return image
 
 
@@ -28,9 +39,6 @@ class Sprite(pygame.sprite.Sprite):
         self.facing_right = -1
 
     def update(self):
-        '''This method iterates through the elements inside self.images and
-        displays the next one each tick. For a slower animation, you may want to
-        consider using a timer of some sort so it updates slower.'''
         self.counter += 1
 
         if self.counter == 5:
@@ -75,7 +83,8 @@ class Tile():
 FLOOR = Tile('floor', 'oryx_16bit_scifi_world_01.png', 1, True)
 GRASS = Tile('grass', 'grass0.png', 1, True)
 WATER = Tile('water', 'water0.png', 1, False)
-DOOR = Tile('door', 'oryx_16bit_scifi_world_481.png', 1, False)
+DOOR = Tile('door', 'oryx_16bit_scifi_world_481.png', 1, True)
+OPEN_DOOR = Tile('open_door', 'oryx_16bit_scifi_world_1106.png', 1, True)
 WALLS = [
     Tile('wall_top_left', 'oryx_16bit_scifi_world_14.png', 1, False),
     Tile('wall_top_right', 'oryx_16bit_scifi_world_15.png', 1, False),
@@ -112,9 +121,23 @@ def create_room(room):
             else:
                 tilemap[x][y] = FLOOR
 
+def scan_for_room(room):
+    for x in range(room.x1 - 1, room.x2 + 1):
+        for y in range(room.y1 - 1, room.y2 + 1):
+            try:
+                if tilemap[x][y].z_level != 0:
+                    return False
+            except IndexError:
+                return False
+
+    if room.x1 <= 0 or room.x2 >= MAPWIDTH - 1 or room.y1 <= 0 or room.y2 >= MAPHEIGHT - 1:
+        return False
+
+    return True
 
 def pick_wall(room):
-    direction = random.choice(['north', 'east', 'south', 'west'])
+    direction = 'west'
+    # direction = random.choice(['north', 'east', 'south', 'west'])
     edge = 0
     x = 0
     y = 0
@@ -270,6 +293,7 @@ def scan_for_corridor(wall_x, wall_y, direction):
 
     return corridor_length
 
+
 def generate_door(room_x, room_y, room_height, room_width):
     wall_x = random.choice([room_x - 1, room_x + room_width - 1])
     wall_y = random.choice([room_y - 1, room_y + room_height - 1])
@@ -283,7 +307,7 @@ def generate_door(room_x, room_y, room_height, room_width):
 def generate_tilemap():
     global tilemap
     tilemap = [[numpy.random.choice(BACKGROUND, p=BACKGROUND_WEIGHTS) for height in range(MAPHEIGHT)] for width in
-           range(MAPWIDTH)]
+               range(MAPWIDTH)]
 
     starting_room_width = 5
     starting_room_height = 5
@@ -299,6 +323,35 @@ def generate_tilemap():
         create_corridor(wall_x, wall_y, direction, edge, available_cooridor_length)
     else:
         print("blocked!")
+
+    if direction == 'north':
+        new_room = Rect(wall_x, wall_y - 2 * (available_cooridor_length) - 1, available_cooridor_length, available_cooridor_length)
+        print(scan_for_room(new_room))
+        if scan_for_room(new_room):
+            create_room(new_room)
+            tilemap[wall_x][wall_y - available_cooridor_length - 1] = DOOR
+    elif direction == 'east':
+        y = random.randint(0, 3)
+        new_room = Rect(wall_x + available_cooridor_length + 1, wall_y - y, random.randint(4, 10), random.randint(4, 10))
+        print(scan_for_room(new_room))
+        if scan_for_room(new_room):
+            create_room(new_room)
+            tilemap[wall_x + available_cooridor_length][wall_y] = DOOR
+    elif direction == 'south':
+        x = random.randint(0, 3)
+        new_room = Rect(wall_x - x, wall_y + available_cooridor_length + 1, random.randint(4, 10), random.randint(4, 10))
+        print(scan_for_room(new_room))
+        if scan_for_room(new_room):
+            create_room(new_room)
+            tilemap[wall_x][wall_y + available_cooridor_length] = DOOR
+    elif direction == 'west':
+        y = random.randint(0, 3)
+        new_room = Rect(wall_x - 2 * available_cooridor_length - 1, wall_y - y, random.randint(4, 10), random.randint(4, 10))
+        print(scan_for_room(new_room))
+        if scan_for_room(new_room):
+            create_room(new_room)
+            tilemap[wall_x - available_cooridor_length - 1][wall_y] = DOOR
+
     return tilemap
 
 
@@ -374,6 +427,14 @@ while True:
         except IndexError:
             passable = False
 
+        try:
+            is_door = (tilemap[PLAYER.x][PLAYER.y + 1] == DOOR)
+        except IndexError:
+            is_door = False
+
+        if is_door:
+            tilemap[PLAYER.x][PLAYER.y + 1] = OPEN_DOOR
+
         if passable:
             PLAYER.move(0, 1)
 
@@ -386,6 +447,7 @@ while True:
             if event.key == K_ESCAPE:
                 quitGame()
 
+    DISPLAYSURF.fill((0, 0, 0))
     for row in range(MAPHEIGHT):
         for column in range(MAPWIDTH):
             DISPLAYSURF.blit(tilemap[column][row].sprite, (column * TILESIZE, row * TILESIZE))
