@@ -1,12 +1,15 @@
-import math
 import os
 import random
-import sys
-from pprint import pprint
-from generator import dMap
+from tkinter import *
+
 import numpy
 import pygame
 from pygame.locals import *
+
+from generator import dMap
+from messages import Message as messages_Message
+from messages import MessageHandler
+from theme import *
 
 
 def load_image(name):
@@ -22,7 +25,6 @@ def load_image(name):
         print('Cannot load image:', fullname)
         raise SystemExit(message)
     return image
-
 
 class Sprite(pygame.sprite.Sprite):
     def __init__(self, images, x, y):
@@ -109,30 +111,23 @@ def quitGame():
 
 # useful game dimensions
 TILESIZE = 24
-MAPWIDTH = 40
-MAPHEIGHT = 40
-
-# constants representing colours
-BLACK = (0, 0, 0)
-BROWN = (153, 76, 0)
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
+MAPWIDTH = 60
+MAPHEIGHT = 30
 
 # set up the display
 pygame.init()
-DISPLAYSURF = pygame.display.set_mode((MAPWIDTH * TILESIZE, MAPHEIGHT * TILESIZE))
+DISPLAYSURF = pygame.display.set_mode((MAPWIDTH * TILESIZE, MAPHEIGHT * TILESIZE + 150))
+
+message_handler = MessageHandler()
 
 # the player image
-PLAYER = Sprite(['oryx_16bit_scifi_creatures_01.png', 'oryx_16bit_scifi_creatures_02.png'],
-                math.floor((MAPWIDTH / 2) - 1),
-                math.floor((MAPHEIGHT / 2) - 1))
 
 clock = pygame.time.Clock()
 startx = MAPWIDTH
 starty = MAPHEIGHT
 
 themap = dMap()
-themap.makeMap(startx, starty, 110, 50, 60)
+themap.makeMap(startx, starty, 100, 45, 101)
 
 map = []
 for y in range(starty):
@@ -153,25 +148,48 @@ for y in range(starty):
         if themap.mapArr[y][x] == 6:
             line.append(WALLS[0])
         if themap.mapArr[y][x] == 7:
-            line.append(WALLS[2])
-        if themap.mapArr[y][x] == 8:
             line.append(WALLS[1])
+        if themap.mapArr[y][x] == 8:
+            line.append(WALLS[2])
         if themap.mapArr[y][x] == 9:
             line.append(WALLS[3])
         if themap.mapArr[y][x] == 10:
-            line.append(WALLS[5])
-        if themap.mapArr[y][x] == 11:
             line.append(WALLS[4])
+        if themap.mapArr[y][x] == 11:
+            line.append(WALLS[5])
     map.append(line)
+
+room_found = False
+while room_found == False:
+    room_index = random.randint(1, len(themap.roomList) - 1)
+    starting_room = themap.roomList[room_index]
+    print(starting_room)
+    try:
+        x_pos = random.randint(starting_room[2] + 1, starting_room[2] + starting_room[1] - 1)
+        y_pos = random.randint(starting_room[3] + 1, starting_room[3] + starting_room[0] - 1)
+    except ValueError:
+        continue
+    PLAYER = Sprite(['oryx_16bit_scifi_creatures_01.png', 'oryx_16bit_scifi_creatures_02.png'],
+                    x_pos,
+                    y_pos)
+    if map[y_pos][x_pos] == FLOOR:
+        room_found = True
+
+message_handler.messages.append(messages_Message('Welcome to <Game Name>.', 'warning'))
 
 while True:
     clock.tick(12)
 
     keys = pygame.key.get_pressed()
+    buttons = [pygame.key.name(k) for k, v in enumerate(keys) if v]
+    if len(buttons) > 0:
+        string = (buttons[0] + ' ') * 20
+        message_handler.messages.append(messages_Message(string, 'default'))
+
     if (keys[K_RIGHT]) and PLAYER.x < MAPWIDTH - 1:
         PLAYER.facing_right = True
         try:
-            passable = map[PLAYER.x + 1][PLAYER.y].is_passable
+            passable = map[PLAYER.y][PLAYER.x + 1].is_passable
         except IndexError:
             passable = False
 
@@ -180,7 +198,7 @@ while True:
     if (keys[K_LEFT]) and PLAYER.x > 0:
         PLAYER.facing_right = False
         try:
-            passable = map[PLAYER.x - 1][PLAYER.y].is_passable
+            passable = map[PLAYER.y][PLAYER.x - 1].is_passable
         except IndexError:
             passable = False
 
@@ -190,29 +208,20 @@ while True:
     if (keys[K_UP]) and PLAYER.y > 0:
 
         try:
-            passable = map[PLAYER.x][PLAYER.y - 1].is_passable
+            passable = map[PLAYER.y - 1][PLAYER.x].is_passable
         except IndexError:
             passable = False
         if passable:
             PLAYER.move(0, -1)
     if (keys[K_DOWN]) and PLAYER.y < MAPHEIGHT - 1:
         try:
-            passable = map[PLAYER.x][PLAYER.y + 1].is_passable
+            passable = map[PLAYER.y + 1][PLAYER.x].is_passable
         except IndexError:
             passable = False
-
-        try:
-            is_door = (map[PLAYER.x][PLAYER.y + 1] == DOOR)
-        except IndexError:
-            is_door = False
-
-        if is_door:
-            map[PLAYER.x][PLAYER.y + 1] = OPEN_DOOR
 
         if passable:
             PLAYER.move(0, 1)
 
-    # get all the user events
     for event in pygame.event.get():
         if event.type == QUIT:
             quitGame()
@@ -221,11 +230,15 @@ while True:
             if event.key == K_ESCAPE:
                 quitGame()
 
-    DISPLAYSURF.fill((0, 0, 0))
+    DISPLAYSURF.fill(BLACK)
     for row in range(MAPWIDTH):
         for column in range(MAPHEIGHT):
-            DISPLAYSURF.blit(map[column][row].sprite, (column * TILESIZE, row * TILESIZE))
+            DISPLAYSURF.blit(map[column][row].sprite, (row * TILESIZE, column * TILESIZE))
 
     PLAYER.update()
 
+    message_handler.display_messages(DISPLAYSURF)
+
+    pygame.draw.rect(DISPLAYSURF, TERTIARY.shades[4], (0, 720, MAPWIDTH * TILESIZE, 150), 1)
+    pygame.draw.line(DISPLAYSURF, TERTIARY.shades[4], (1015, 720), (1015, 720 + 150))
     pygame.display.update()

@@ -1,15 +1,28 @@
 # Class to produce random map layouts
-from random import *
-from math import *
 
+from random import *
 
 class dMap:
     def __init__(self):
+        """
+
+        :rtype: object
+        """
         self.roomList = []
         self.cList = []
 
     def makeMap(self, xsize, ysize, fail, b1, mrooms):
-        """Generate random layout of rooms, corridors and other features"""
+        """Generate random layout of rooms, corridors and other features
+        :param xsize: x size of the map area 
+        :param ysize:  y size of the map area 
+        :param fail: a value from 1 upwards. The higer the value of fail, the greater the chance of larger dungeons 
+            being created. A low value (>10) tends to produce only a few rooms, a high value (<50) raises the chance 
+            that the whole map area will be used to create rooms (up to the value of mrooms - see below) 
+        :param b1: corridor bias. This is a value from 0 to 100 and represents the %chance a feature will be a corridor 
+                    instead of a room. A value of 0 will produce rooms only, a value of 100 will produce corridors only 
+        :param mrooms: maximum number of rooms to create. This, combined with fail, can be used to create a specific 
+                        number of rooms
+        """
         # makeMap can be modified to accept arguments for values of failed, and percentile of features.
         # Create first room
         self.size_x = xsize
