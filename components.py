@@ -3,16 +3,21 @@ import os
 import pygame
 
 
-class Position():
+class AI:
+    def __init__(self):
+        super().__init__()
+
+
+class Fighter:
+    def __init__(self, health=0, max_health=0):
+        self.max_health = max_health
+        self.health = health
+
+
+class Position:
     def __init__(self, x=0, y=0):
         self.x = x
         self.y = y
-
-
-class Velocity:
-    def __init__(self, dx=0, dy=0):
-        self.dx = dx
-        self.dy = dy
 
 
 class Sprite(pygame.sprite.Sprite):
@@ -38,3 +43,9 @@ class Sprite(pygame.sprite.Sprite):
             print('Cannot load image:', fullname)
             raise SystemExit(message)
         return image
+
+
+class Velocity:
+    def __init__(self, dx=0, dy=0):
+        self.dx = dx
+        self.dy = dy

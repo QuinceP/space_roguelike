@@ -11,14 +11,6 @@ from systems import *
 from theme import *
 
 
-class Rect:
-    def __init__(self, x, y, w, h):
-        self.x1 = x
-        self.y1 = y
-        self.x2 = x + w
-        self.y2 = y + h
-
-
 class Tile():
     def __init__(self, name, sprite, z_level, is_passable):
         self.name = name
@@ -112,9 +104,11 @@ for y in range(starty):
 
 world = esper.World()
 
+ai_system = AISystem(map, MAPWIDTH, MAPHEIGHT)
 movement_system = MovementSystem()
 sprite_system = SpriteSystem(DISPLAYSURF, TILESIZE)
 
+world.add_processor(ai_system, priority=1)
 world.add_processor(movement_system)
 world.add_processor(sprite_system)
 
@@ -130,7 +124,26 @@ while room_found == False:
 
     PLAYER = world.create_entity(Sprite(['oryx_16bit_scifi_creatures_01.png', 'oryx_16bit_scifi_creatures_02.png']),
                                  Position(x_pos, y_pos),
-                                 Velocity())
+                                 Velocity(),
+                                 Fighter(health=100, max_health=100))
+    if map[y_pos][x_pos] == FLOOR:
+        room_found = True
+
+room_found = False
+while room_found == False:
+    room_index = random.randint(1, len(themap.roomList) - 1)
+    starting_room = themap.roomList[room_index]
+    try:
+        x_pos = random.randint(starting_room[2] + 1, starting_room[2] + starting_room[1] - 1)
+        y_pos = random.randint(starting_room[3] + 1, starting_room[3] + starting_room[0] - 1)
+    except ValueError:
+        continue
+
+    MONSTER = world.create_entity(Sprite(['oryx_16bit_scifi_creatures_553.png', 'oryx_16bit_scifi_creatures_554.png']),
+                                 Position(x_pos, y_pos),
+                                 Velocity(),
+                                 Fighter(health=100, max_health=100),
+                                  AI())
     if map[y_pos][x_pos] == FLOOR:
         room_found = True
 
@@ -143,6 +156,7 @@ while True:
     player_y = world.component_for_entity(PLAYER, Position).y
     player_velocity = world.component_for_entity(PLAYER, Velocity)
     player_sprite = world.component_for_entity(PLAYER, Sprite)
+    player_fighter = world.component_for_entity(PLAYER, Fighter)
 
     for event in pygame.event.get():
         if event.type == QUIT:
@@ -155,7 +169,7 @@ while True:
             if event.key == K_ESCAPE:
                 quitGame()
             elif event.key == pygame.K_RIGHT and player_x < MAPWIDTH - 1:
-                player_sprite.facing_right =True
+                player_sprite.facing_right = True
                 try:
                     passable = map[player_y][player_x + 1].is_passable
                 except IndexError:
@@ -164,7 +178,7 @@ while True:
                 if passable:
                     player_velocity.dx = 1
             elif event.key == pygame.K_LEFT and player_x > 0:
-                player_sprite.facing_right =False
+                player_sprite.facing_right = False
                 try:
                     passable = map[player_y][player_x - 1].is_passable
                 except IndexError:
@@ -196,6 +210,14 @@ while True:
     world.process()
 
     message_handler.display_messages(DISPLAYSURF)
+
+    name = message_handler.font.render('Player Name the Class', 1, SECONDARY.shades[4])
+    DISPLAYSURF.blit(name, (1025, 720))
+
+    health = message_handler.font.render('Health:', 1, COMPLEMENTARY.shades[4])
+    DISPLAYSURF.blit(health, (1025, 745))
+    health = message_handler.font.render(str(player_fighter.health) + '/' + str(player_fighter.health), 1, COMPLEMENTARY.shades[4])
+    DISPLAYSURF.blit(health, (1100, 745))
 
     pygame.draw.rect(DISPLAYSURF, TERTIARY.shades[4], (0, 720, MAPWIDTH * TILESIZE, 150), 1)
     pygame.draw.line(DISPLAYSURF, TERTIARY.shades[4], (1015, 720), (1015, 720 + 150))
