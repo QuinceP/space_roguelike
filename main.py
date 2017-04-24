@@ -1,65 +1,14 @@
-import os
 import random
 from tkinter import *
 
 import numpy
-import pygame
 from pygame.locals import *
 
 from generator import dMap
 from messages import Message as messages_Message
 from messages import MessageHandler
+from systems import *
 from theme import *
-
-
-def load_image(name):
-    """ Load image and return image object"""
-    fullname = os.path.join('', name)
-    try:
-        image = pygame.image.load(fullname)
-        if image.get_alpha() is None:
-            image = image.convert()
-        else:
-            image = image.convert_alpha()
-    except pygame.error as message:
-        print('Cannot load image:', fullname)
-        raise SystemExit(message)
-    return image
-
-class Sprite(pygame.sprite.Sprite):
-    def __init__(self, images, x, y):
-        super(Sprite, self).__init__()
-        self.x = x
-        self.y = y
-        self.counter = 0
-        self.imageArray = []
-        for i in range(0, len(images)):
-            self.imageArray.append(load_image(images[i]))
-
-        self.index = 0
-        self.image = self.imageArray[self.index]
-        self.facing_right = -1
-
-    def update(self):
-        self.counter += 1
-
-        if self.counter == 5:
-            self.index += 1
-            self.counter = 0
-
-        if self.index >= len(self.imageArray):
-            self.index = 0
-
-        self.image = self.imageArray[self.index]
-        self.flip()
-        DISPLAYSURF.blit(self.image, (self.x * TILESIZE, self.y * TILESIZE))
-
-    def flip(self):
-        self.image = pygame.transform.flip(self.image, self.facing_right, False)
-
-    def move(self, dx, dy):
-        self.x += dx
-        self.y += dy
 
 
 class Rect:
@@ -81,6 +30,8 @@ class Tile():
         return "<Tile name:%s sprite:%s z_level:%s is_passable:%s>" % (
             self.name, self.sprite, self.z_level, self.is_passable)
 
+
+world = esper.World
 
 FLOOR = Tile('floor', 'oryx_16bit_scifi_world_01.png', 1, True)
 GRASS = Tile('grass', 'grass0.png', 1, True)
@@ -159,83 +110,90 @@ for y in range(starty):
             line.append(WALLS[5])
     map.append(line)
 
+world = esper.World()
+
+movement_system = MovementSystem()
+sprite_system = SpriteSystem(DISPLAYSURF, TILESIZE)
+
+world.add_processor(movement_system)
+world.add_processor(sprite_system)
+
 room_found = False
 while room_found == False:
     room_index = random.randint(1, len(themap.roomList) - 1)
     starting_room = themap.roomList[room_index]
-    print(starting_room)
     try:
         x_pos = random.randint(starting_room[2] + 1, starting_room[2] + starting_room[1] - 1)
         y_pos = random.randint(starting_room[3] + 1, starting_room[3] + starting_room[0] - 1)
     except ValueError:
         continue
-    PLAYER = Sprite(['oryx_16bit_scifi_creatures_01.png', 'oryx_16bit_scifi_creatures_02.png'],
-                    x_pos,
-                    y_pos)
+
+    PLAYER = world.create_entity(Sprite(['oryx_16bit_scifi_creatures_01.png', 'oryx_16bit_scifi_creatures_02.png']),
+                                 Position(x_pos, y_pos),
+                                 Velocity())
     if map[y_pos][x_pos] == FLOOR:
         room_found = True
 
 message_handler.messages.append(messages_Message('Welcome to <Game Name>.', 'warning'))
 
 while True:
-    clock.tick(12)
+    clock.tick(10)
 
-    keys = pygame.key.get_pressed()
-    buttons = [pygame.key.name(k) for k, v in enumerate(keys) if v]
-    if len(buttons) > 0:
-        string = (buttons[0] + ' ') * 20
-        message_handler.messages.append(messages_Message(string, 'default'))
-
-    if (keys[K_RIGHT]) and PLAYER.x < MAPWIDTH - 1:
-        PLAYER.facing_right = True
-        try:
-            passable = map[PLAYER.y][PLAYER.x + 1].is_passable
-        except IndexError:
-            passable = False
-
-        if passable:
-            PLAYER.move(1, 0)
-    if (keys[K_LEFT]) and PLAYER.x > 0:
-        PLAYER.facing_right = False
-        try:
-            passable = map[PLAYER.y][PLAYER.x - 1].is_passable
-        except IndexError:
-            passable = False
-
-        if passable:
-            PLAYER.move(-1, 0)
-
-    if (keys[K_UP]) and PLAYER.y > 0:
-
-        try:
-            passable = map[PLAYER.y - 1][PLAYER.x].is_passable
-        except IndexError:
-            passable = False
-        if passable:
-            PLAYER.move(0, -1)
-    if (keys[K_DOWN]) and PLAYER.y < MAPHEIGHT - 1:
-        try:
-            passable = map[PLAYER.y + 1][PLAYER.x].is_passable
-        except IndexError:
-            passable = False
-
-        if passable:
-            PLAYER.move(0, 1)
+    player_x = world.component_for_entity(PLAYER, Position).x
+    player_y = world.component_for_entity(PLAYER, Position).y
+    player_velocity = world.component_for_entity(PLAYER, Velocity)
+    player_sprite = world.component_for_entity(PLAYER, Sprite)
 
     for event in pygame.event.get():
         if event.type == QUIT:
             quitGame()
 
         elif event.type == KEYDOWN:
+            string = ('You pressed ' + pygame.key.name(event.key))
+            message_handler.messages.append(messages_Message(string, 'default'))
+
             if event.key == K_ESCAPE:
                 quitGame()
+            elif event.key == pygame.K_RIGHT and player_x < MAPWIDTH - 1:
+                player_sprite.facing_right =True
+                try:
+                    passable = map[player_y][player_x + 1].is_passable
+                except IndexError:
+                    passable = False
+
+                if passable:
+                    player_velocity.dx = 1
+            elif event.key == pygame.K_LEFT and player_x > 0:
+                player_sprite.facing_right =False
+                try:
+                    passable = map[player_y][player_x - 1].is_passable
+                except IndexError:
+                    passable = False
+
+                if passable:
+                    player_velocity.dx = -1
+            elif event.key == pygame.K_UP and player_y > 0:
+                try:
+                    passable = map[player_y - 1][player_x].is_passable
+                except IndexError:
+                    passable = False
+                if passable:
+                    player_velocity.dy = -1
+            elif event.key == pygame.K_DOWN and player_y < MAPHEIGHT - 1:
+                try:
+                    passable = map[player_y + 1][player_x].is_passable
+                except IndexError:
+                    passable = False
+
+                if passable:
+                    player_velocity.dy = 1
 
     DISPLAYSURF.fill(BLACK)
     for row in range(MAPWIDTH):
         for column in range(MAPHEIGHT):
             DISPLAYSURF.blit(map[column][row].sprite, (row * TILESIZE, column * TILESIZE))
 
-    PLAYER.update()
+    world.process()
 
     message_handler.display_messages(DISPLAYSURF)
 
