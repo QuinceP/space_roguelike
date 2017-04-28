@@ -13,9 +13,10 @@ from theme import *
 # TODO: Abstraction and cleanup
 
 class Tile():
-    def __init__(self, name, sprite, z_level, is_passable):
+    def __init__(self, name, sprite, alt_sprite, z_level, is_passable):
         self.name = name
         self.sprite = pygame.image.load(sprite)
+        self.alt_sprite = alt_sprite
         self.sprite = pygame.transform.scale(self.sprite, (64, 64))
         self.z_level = z_level
         self.is_passable = is_passable
@@ -24,30 +25,32 @@ class Tile():
         return "<Tile name:%s sprite:%s z_level:%s is_passable:%s>" % (
             self.name, self.sprite, self.z_level, self.is_passable)
 
+pygame.init()
+pygame.font.init()
 
 world = esper.World
+font = pygame.font.Font(FONT, 24)
 
-FLOOR = Tile('floor', 'oryx_16bit_scifi_world_01.png', 1, True)
-GRASS = Tile('grass', 'grass0.png', 1, True)
-WATER = Tile('water', 'water0.png', 1, False)
-DOOR = Tile('door', 'oryx_16bit_scifi_world_481.png', 1, True)
-OPEN_DOOR = Tile('open_door', 'oryx_16bit_scifi_world_1106.png', 1, True)
+FLOOR = Tile('floor', 'oryx_16bit_scifi_world_01.png', font.render('.', 1, SECONDARY.shades[0]), 1, True)
+GRASS = Tile('grass', 'grass0.png', font.render('@', 1, (255, 0, 0)), 1, True)
+WATER = Tile('water', 'water0.png', font.render('@', 1, (255, 0, 0)), 1, False)
+DOOR = Tile('door', 'oryx_16bit_scifi_world_481.png', font.render('+', 1, SECONDARY.shades[4]), 1, True)
+OPEN_DOOR = Tile('open_door', 'oryx_16bit_scifi_world_1106.png', font.render('@', 1, (255, 0, 0)), 1, True)
 WALLS = [
-    Tile('wall_top_left', 'oryx_16bit_scifi_world_14.png', 1, False),
-    Tile('wall_top_right', 'oryx_16bit_scifi_world_15.png', 1, False),
-    Tile('wall_bottom_left', 'oryx_16bit_scifi_world_16.png', 1, False),
-    Tile('wall_bottom_right', 'oryx_16bit_scifi_world_17.png', 1, False),
-    Tile('wall_vertical', 'oryx_16bit_scifi_world_12.png', 1, False),
-    Tile('wall_horizontal', 'oryx_16bit_scifi_world_09.png', 1, False)
+    Tile('wall_top_left', 'oryx_16bit_scifi_world_14.png', font.render('#', 1, SECONDARY.shades[3]), 1, False),
+    Tile('wall_top_right', 'oryx_16bit_scifi_world_15.png', font.render('#', 1, SECONDARY.shades[3]), 1, False),
+    Tile('wall_bottom_left', 'oryx_16bit_scifi_world_16.png', font.render('#', 1, SECONDARY.shades[3]), 1, False),
+    Tile('wall_bottom_right', 'oryx_16bit_scifi_world_17.png', font.render('#', 1, SECONDARY.shades[3]), 1, False),
+    Tile('wall_vertical', 'oryx_16bit_scifi_world_12.png', font.render('#', 1, SECONDARY.shades[3]), 1, False),
+    Tile('wall_horizontal', 'oryx_16bit_scifi_world_09.png', font.render('#', 1, SECONDARY.shades[3]), 1, False)
 ]
 BACKGROUND = [
-    Tile('empty_space', 'oryx_16bit_scifi_world_965.png', 0, False),
-    Tile('double_stars', 'oryx_16bit_scifi_world_966.png', 0, False),
-    Tile('single_star', 'oryx_16bit_scifi_world_967.png', 0, False),
-    Tile('big_star', 'oryx_16bit_scifi_world_968.png', 0, False)
+    Tile('empty_space', 'oryx_16bit_scifi_world_965.png', font.render(' ', 1, (255, 0, 0)), 0, False),
+    Tile('double_stars', 'oryx_16bit_scifi_world_966.png', font.render(' ', 1, (255, 0, 0)), 0, False),
+    Tile('single_star', 'oryx_16bit_scifi_world_967.png', font.render(' ', 1, (255, 0, 0)), 0, False),
+    Tile('big_star', 'oryx_16bit_scifi_world_968.png', font.render(' ', 1, (255, 0, 0)), 0, False)
 ]
 BACKGROUND_WEIGHTS = [0.85, 0.05, 0.08, 0.02]
-
 
 def quitGame():
     pygame.quit()
@@ -58,7 +61,7 @@ TILESIZE = 64
 MAPWIDTH = 60
 MAPHEIGHT = 30
 
-pygame.init()
+
 DISPLAYSURF = pygame.display.set_mode((1536, 768 + 150))
 
 message_handler = MessageHandler()
@@ -122,7 +125,7 @@ while not room_found:
     except ValueError:
         continue
 
-    PLAYER = world.create_entity(Sprite(['oryx_16bit_scifi_creatures_01.png', 'oryx_16bit_scifi_creatures_02.png']),
+    PLAYER = world.create_entity(Sprite(['oryx_16bit_scifi_creatures_33.png', 'oryx_16bit_scifi_creatures_34.png']),
                                  Position(x_pos, y_pos),
                                  Velocity(),
                                  Fighter(health=100, max_health=100))
@@ -146,11 +149,14 @@ while not room_found:
     MONSTER = world.create_entity(Sprite(['oryx_16bit_scifi_creatures_553.png', 'oryx_16bit_scifi_creatures_554.png']),
                                   Position(x_pos, y_pos),
                                   Velocity(),
-                                  Fighter(health=100, max_health=100))
+                                  Fighter(health=100, max_health=100)
+                                  )
     if map[y_pos][x_pos] == FLOOR:
         room_found = True
 
 message_handler.messages.append(messages_Message('Welcome to <Game Name>.', 'warning'))
+
+turns = 0
 
 while True:
     clock.tick(10)
@@ -160,6 +166,10 @@ while True:
     player_velocity = world.component_for_entity(PLAYER, Velocity)
     player_sprite = world.component_for_entity(PLAYER, Sprite)
     player_fighter = world.component_for_entity(PLAYER, Fighter)
+
+    monster_x = world.component_for_entity(MONSTER, Position).x
+    monster_y = world.component_for_entity(MONSTER, Position).y
+    monster_sprite = world.component_for_entity(MONSTER, Sprite)
 
     world.component_for_entity(camera, Position).x = player_x
     world.component_for_entity(camera, Position).y = player_y
@@ -173,7 +183,8 @@ while True:
             quitGame()
 
         elif event.type == KEYDOWN:
-            string = ('You pressed ' + pygame.key.name(event.key))
+            turns += 1
+            string = ('Turn ' + turns.__str__())
             message_handler.messages.append(messages_Message(string, 'default'))
             if event.key == K_ESCAPE:
                 quitGame()
@@ -210,16 +221,16 @@ while True:
 
     DISPLAYSURF.fill(BLACK)
 
-    x_1 = player_x - 11
-    x_2 = player_x + 13
-    y_1 = player_y - 5
-    y_2 = player_y + 7
+    x_1 = player_x - 10
+    x_2 = player_x + 10
+    y_1 = player_y - 6
+    y_2 = player_y + 6
 
     if x_1 < 0:
         x_1 = 0
-        x_2 = 24
+        x_2 = 20
     if x_2 > MAPWIDTH:
-        x_1 = MAPWIDTH - 24
+        x_1 = MAPWIDTH - 20
         x_2 = MAPWIDTH
     if y_1 < 0:
         y_1 = 0
@@ -233,8 +244,27 @@ while True:
     for i in range(x_1, x_2):
         for j in range(y_1, y_2):
             DISPLAYSURF.blit(map[j][i].sprite, (TILESIZE * row, TILESIZE * column))
+            if i == monster_x and j == monster_y:
+                DISPLAYSURF.blit(monster_sprite.current_image, (TILESIZE * row, TILESIZE * column))
             if i == player_x and j == player_y:
                 DISPLAYSURF.blit(player_sprite.current_image, (TILESIZE * row, TILESIZE * column))
+            column += 1
+        column = 0
+        row += 1
+
+    row = 0
+    column = 0
+    for i in range(x_1 + 5, x_2):
+        for j in range(y_1 + 1, y_2 - 1):
+            object_blit = True
+            if i == monster_x and j == monster_y:
+                DISPLAYSURF.blit(font.render('c', 1, COMPLEMENTARY.shades[4]), ((25 * row) + 1287, (25 * column) - 6))
+                object_blit = False
+            if i == player_x and j == player_y:
+                DISPLAYSURF.blit(font.render('@', 1, SECONDARY.shades[2]), ((25 * row) + 1287, (25 * column) - 6))
+                object_blit = False
+            if object_blit:
+                DISPLAYSURF.blit(map[j][i].alt_sprite, ((25 * row) + 1287, (25 * column) - 6))
             column += 1
         column = 0
         row += 1
@@ -253,5 +283,7 @@ while True:
     DISPLAYSURF.blit(health, (1100, 795))
 
     pygame.draw.rect(DISPLAYSURF, TERTIARY.shades[4], (0, 768, 1536, 150), 1)
+    pygame.draw.rect(DISPLAYSURF, TERTIARY.shades[4], (1280, 0, 255, 769), 1)
+    pygame.draw.rect(DISPLAYSURF, TERTIARY.shades[4], (1280, 0, 255, 251), 1)
     pygame.draw.line(DISPLAYSURF, TERTIARY.shades[4], (1015, 768), (1015, 768 + 150))
     pygame.display.update()

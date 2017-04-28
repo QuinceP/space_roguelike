@@ -27,8 +27,6 @@ class MessageHandler:
         self.messages = []
         self.font = pygame.font.Font(FONT, FONT_SIZE)
 
-        pygame.font.init()
-
     def display_messages(self, surface):
         if len(self.messages) > 0:
             line_count = 0
