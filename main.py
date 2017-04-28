@@ -252,16 +252,34 @@ while True:
         column = 0
         row += 1
 
+    x_1 = player_x - 5
+    x_2 = player_x + 5
+    y_1 = player_y - 5
+    y_2 = player_y + 5
+
+    if x_1 < 0:
+        x_1 = 0
+        x_2 = 10
+    if x_2 > MAPWIDTH:
+        x_1 = MAPWIDTH - 10
+        x_2 = MAPWIDTH
+    if y_1 < 0:
+        y_1 = 0
+        y_2 = 10
+    if y_2 > MAPHEIGHT:
+        y_1 = MAPHEIGHT - 10
+        y_2 = MAPHEIGHT
+
     row = 0
     column = 0
-    for i in range(x_1 + 5, x_2):
-        for j in range(y_1 + 1, y_2 - 1):
+    for i in range(x_1, x_2):
+        for j in range(y_1, y_2):
             object_blit = True
             if i == monster_x and j == monster_y:
-                DISPLAYSURF.blit(font.render('c', 1, COMPLEMENTARY.shades[4]), ((25 * row) + 1287, (25 * column) - 6))
+                DISPLAYSURF.blit(font.render('c', 1, COMPLEMENTARY.shades[4]), ((25 * row) + 1280, (25 * column) - 6))
                 object_blit = False
             if i == player_x and j == player_y:
-                DISPLAYSURF.blit(font.render('@', 1, SECONDARY.shades[2]), ((25 * row) + 1287, (25 * column) - 6))
+                DISPLAYSURF.blit(font.render('@', 1, SECONDARY.shades[2]), ((25 * row) + 1280, (25 * column) - 6))
                 object_blit = False
             if object_blit:
                 DISPLAYSURF.blit(map[j][i].alt_sprite, ((25 * row) + 1287, (25 * column) - 6))
