@@ -8,6 +8,15 @@ class AI:
         super().__init__()
 
 
+class Camera:
+    def __init__(self, width, height, target):
+        self.width = width
+        self.height = height
+        self.target = target
+        self.x = 0
+        self.y = -0
+
+
 class Fighter:
     def __init__(self, health=0, max_health=0):
         self.max_health = max_health
@@ -43,6 +52,9 @@ class Sprite(pygame.sprite.Sprite):
             print('Cannot load image:', fullname)
             raise SystemExit(message)
         return image
+
+    def blit(self, position):
+        self.parent_surface.blit(self.current_image, (position.x * self.tile_size, position.y * self.tile_size))
 
 
 class Velocity:

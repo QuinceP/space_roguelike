@@ -1,4 +1,3 @@
-import random
 from tkinter import *
 
 import numpy
@@ -11,10 +10,13 @@ from systems import *
 from theme import *
 
 
+# TODO: Abstraction and cleanup
+
 class Tile():
     def __init__(self, name, sprite, z_level, is_passable):
         self.name = name
         self.sprite = pygame.image.load(sprite)
+        self.sprite = pygame.transform.scale(self.sprite, (64, 64))
         self.z_level = z_level
         self.is_passable = is_passable
 
@@ -52,18 +54,14 @@ def quitGame():
     sys.exit()
 
 
-# useful game dimensions
-TILESIZE = 24
+TILESIZE = 64
 MAPWIDTH = 60
 MAPHEIGHT = 30
 
-# set up the display
 pygame.init()
-DISPLAYSURF = pygame.display.set_mode((MAPWIDTH * TILESIZE, MAPHEIGHT * TILESIZE + 150))
+DISPLAYSURF = pygame.display.set_mode((1536, 768 + 150))
 
 message_handler = MessageHandler()
-
-# the player image
 
 clock = pygame.time.Clock()
 startx = MAPWIDTH
@@ -105,15 +103,17 @@ for y in range(starty):
 world = esper.World()
 
 ai_system = AISystem(map, MAPWIDTH, MAPHEIGHT)
+camera_system = CameraSystem(map, TILESIZE, DISPLAYSURF)
 movement_system = MovementSystem()
 sprite_system = SpriteSystem(DISPLAYSURF, TILESIZE)
 
-world.add_processor(ai_system, priority=1)
-world.add_processor(movement_system)
-world.add_processor(sprite_system)
+world.add_processor(ai_system, priority=2)
+world.add_processor(camera_system, priority=1)
+world.add_processor(movement_system, priority=0)
+world.add_processor(sprite_system, priority=0)
 
 room_found = False
-while room_found == False:
+while not room_found:
     room_index = random.randint(1, len(themap.roomList) - 1)
     starting_room = themap.roomList[room_index]
     try:
@@ -126,11 +126,15 @@ while room_found == False:
                                  Position(x_pos, y_pos),
                                  Velocity(),
                                  Fighter(health=100, max_health=100))
+    camera = world.create_entity(Position(x_pos - 1, y_pos - 1),
+                                 Velocity(),
+                                 Camera(24, 12, PLAYER))
+
     if map[y_pos][x_pos] == FLOOR:
         room_found = True
 
 room_found = False
-while room_found == False:
+while not room_found:
     room_index = random.randint(1, len(themap.roomList) - 1)
     starting_room = themap.roomList[room_index]
     try:
@@ -140,10 +144,9 @@ while room_found == False:
         continue
 
     MONSTER = world.create_entity(Sprite(['oryx_16bit_scifi_creatures_553.png', 'oryx_16bit_scifi_creatures_554.png']),
-                                 Position(x_pos, y_pos),
-                                 Velocity(),
-                                 Fighter(health=100, max_health=100),
-                                  AI())
+                                  Position(x_pos, y_pos),
+                                  Velocity(),
+                                  Fighter(health=100, max_health=100))
     if map[y_pos][x_pos] == FLOOR:
         room_found = True
 
@@ -158,6 +161,13 @@ while True:
     player_sprite = world.component_for_entity(PLAYER, Sprite)
     player_fighter = world.component_for_entity(PLAYER, Fighter)
 
+    world.component_for_entity(camera, Position).x = player_x
+    world.component_for_entity(camera, Position).y = player_y
+
+    camera_x = world.component_for_entity(camera, Position).x
+    camera_y = world.component_for_entity(camera, Position).y
+    camera_velocity = world.component_for_entity(camera, Velocity)
+
     for event in pygame.event.get():
         if event.type == QUIT:
             quitGame()
@@ -165,7 +175,6 @@ while True:
         elif event.type == KEYDOWN:
             string = ('You pressed ' + pygame.key.name(event.key))
             message_handler.messages.append(messages_Message(string, 'default'))
-
             if event.key == K_ESCAPE:
                 quitGame()
             elif event.key == pygame.K_RIGHT and player_x < MAPWIDTH - 1:
@@ -174,7 +183,6 @@ while True:
                     passable = map[player_y][player_x + 1].is_passable
                 except IndexError:
                     passable = False
-
                 if passable:
                     player_velocity.dx = 1
             elif event.key == pygame.K_LEFT and player_x > 0:
@@ -183,7 +191,6 @@ while True:
                     passable = map[player_y][player_x - 1].is_passable
                 except IndexError:
                     passable = False
-
                 if passable:
                     player_velocity.dx = -1
             elif event.key == pygame.K_UP and player_y > 0:
@@ -198,27 +205,53 @@ while True:
                     passable = map[player_y + 1][player_x].is_passable
                 except IndexError:
                     passable = False
-
                 if passable:
                     player_velocity.dy = 1
 
     DISPLAYSURF.fill(BLACK)
-    for row in range(MAPWIDTH):
-        for column in range(MAPHEIGHT):
-            DISPLAYSURF.blit(map[column][row].sprite, (row * TILESIZE, column * TILESIZE))
+
+    x_1 = player_x - 11
+    x_2 = player_x + 13
+    y_1 = player_y - 5
+    y_2 = player_y + 7
+
+    if x_1 < 0:
+        x_1 = 0
+        x_2 = 24
+    if x_2 > MAPWIDTH:
+        x_1 = MAPWIDTH - 24
+        x_2 = MAPWIDTH
+    if y_1 < 0:
+        y_1 = 0
+        y_2 = 12
+    if y_2 > MAPHEIGHT:
+        y_1 = MAPHEIGHT - 12
+        y_2 = MAPHEIGHT
+
+    row = 0
+    column = 0
+    for i in range(x_1, x_2):
+        for j in range(y_1, y_2):
+            DISPLAYSURF.blit(map[j][i].sprite, (TILESIZE * row, TILESIZE * column))
+            if i == player_x and j == player_y:
+                DISPLAYSURF.blit(player_sprite.current_image, (TILESIZE * row, TILESIZE * column))
+            column += 1
+        column = 0
+        row += 1
 
     world.process()
 
     message_handler.display_messages(DISPLAYSURF)
 
     name = message_handler.font.render('Player Name the Class', 1, SECONDARY.shades[4])
-    DISPLAYSURF.blit(name, (1025, 720))
+    DISPLAYSURF.blit(name, (1025, 768))
 
     health = message_handler.font.render('Health:', 1, COMPLEMENTARY.shades[4])
-    DISPLAYSURF.blit(health, (1025, 745))
-    health = message_handler.font.render(str(player_fighter.health) + '/' + str(player_fighter.health), 1, COMPLEMENTARY.shades[4])
-    DISPLAYSURF.blit(health, (1100, 745))
+    DISPLAYSURF.blit(health, (1025, 795))
+    health = message_handler.font.render(str(player_fighter.health) + '/' + str(player_fighter.health), 1,
+                                         COMPLEMENTARY.shades[4])
+    DISPLAYSURF.blit(health, (1100, 795))
 
-    pygame.draw.rect(DISPLAYSURF, TERTIARY.shades[4], (0, 720, MAPWIDTH * TILESIZE, 150), 1)
-    pygame.draw.line(DISPLAYSURF, TERTIARY.shades[4], (1015, 720), (1015, 720 + 150))
+    pygame.draw.rect(DISPLAYSURF, TERTIARY.shades[4], (0, 768, 1536, 150), 1)
+    pygame.draw.line(DISPLAYSURF, TERTIARY.shades[4], (1015, 768), (1015, 768 + 150))
     pygame.display.update()

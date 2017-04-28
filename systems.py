@@ -1,6 +1,9 @@
-import esper
 import random
+
+import esper
+
 from components import *
+
 
 class AISystem(esper.Processor):
     def __init__(self, map, mapwidth, mapheight):
@@ -48,6 +51,16 @@ class AISystem(esper.Processor):
                     velocity.dy = 1
 
 
+class CameraSystem(esper.Processor):
+    def __init__(self, map, tilesize, display_surface):
+        self.map = map
+        self.tilesize = tilesize
+        self.display_surface = display_surface
+
+    def process(self):
+        pass
+
+
 class MovementSystem(esper.Processor):
     def __init__(self):
         super().__init__()
@@ -82,4 +95,5 @@ class SpriteSystem(esper.Processor):
 
             sprite.image = sprite.image_array[sprite.index]
             self.flip(sprite)
-            self.parent_surface.blit(sprite.image, (position.x * self.tile_size, position.y * self.tile_size))
+            sprite.image = pygame.transform.scale(sprite.image, (64, 64))
+            sprite.current_image = pygame.transform.scale(sprite.image, (64, 64))
