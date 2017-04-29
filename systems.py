@@ -13,8 +13,6 @@ class AISystem(esper.Processor):
 
     def process(self):
         for ent, (position, velocity, ai, sprite) in self.world.get_components(Position, Velocity, AI, Sprite):
-            should_move = random.randint(0, 10)
-            # if should_move == 1:
             direction = random.choice(['north', 'east', 'south', 'west'])
             if direction == 'east' and position.x < self.mapwidth - 1:
                 sprite.facing_right = True
@@ -49,16 +47,6 @@ class AISystem(esper.Processor):
 
                 if passable:
                     velocity.dy = 1
-
-
-class CameraSystem(esper.Processor):
-    def __init__(self, map, tilesize, display_surface):
-        self.map = map
-        self.tilesize = tilesize
-        self.display_surface = display_surface
-
-    def process(self):
-        pass
 
 
 class MovementSystem(esper.Processor):

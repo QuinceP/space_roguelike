@@ -1,6 +1,5 @@
 import numpy
 import pygame
-
 from theme import *
 
 MESSAGE_TYPES = {'default': PRIMARY.shades[0],
@@ -8,7 +7,7 @@ MESSAGE_TYPES = {'default': PRIMARY.shades[0],
 MAX_LINE_LENGTH = 100
 MAX_DISPLAY_LINES = 6
 MESSAGES_XPOS = 10
-MESSAGES_YPOS = 768
+MESSAGES_YPOS = WINDOW_WIDTH
 MESSAGES_VERTICAL_SPACING = 25
 
 
@@ -25,7 +24,8 @@ class Message:
 class MessageHandler:
     def __init__(self):
         self.messages = []
-        self.font = pygame.font.Font(FONT, FONT_SIZE)
+        self.font = pygame.font.Font(FONT_FILENAME, FONT_SIZE)
+        self.ascii_font = pygame.font.Font(ASCII_FONT_FILENAME, ASCII_FONT_SIZE)
 
     def display_messages(self, surface):
         if len(self.messages) > 0:
@@ -47,3 +47,7 @@ class MessageHandler:
                 if k < len(lines):
                     label = self.font.render(lines[k], 1, colors[k])
                     surface.blit(label, (MESSAGES_XPOS, MESSAGES_YPOS + (k * MESSAGES_VERTICAL_SPACING)))
+
+
+pygame.font.init()
+message_handler = MessageHandler()

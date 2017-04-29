@@ -1,5 +1,3 @@
-# Class to produce random map layouts
-
 from random import *
 
 
