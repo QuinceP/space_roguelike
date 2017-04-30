@@ -78,6 +78,7 @@ def handle_input():
                     passable = False
                 if passable:
                     player_velocity.dx = 1
+                    turn_taking_system.turn_taken = True
             elif event.key == pygame.K_LEFT and player_x > 0:
                 player_sprite.facing_right = False
                 try:
@@ -86,6 +87,7 @@ def handle_input():
                     passable = False
                 if passable:
                     player_velocity.dx = -1
+                    turn_taking_system.turn_taken = True
             elif event.key == pygame.K_UP and player_y > 0:
                 try:
                     passable = map[player_y - 1][player_x].is_passable
@@ -93,6 +95,7 @@ def handle_input():
                     passable = False
                 if passable:
                     player_velocity.dy = -1
+                    turn_taking_system.turn_taken = True
             elif event.key == pygame.K_DOWN and player_y < MAPHEIGHT - 1:
                 try:
                     passable = map[player_y + 1][player_x].is_passable
@@ -100,6 +103,7 @@ def handle_input():
                     passable = False
                 if passable:
                     player_velocity.dy = 1
+                    turn_taking_system.turn_taken = True
 
 
 def place_in_random_room(object):
@@ -139,28 +143,37 @@ world = esper.World()
 ai_system = AISystem(map, MAPWIDTH, MAPHEIGHT)
 movement_system = MovementSystem()
 sprite_system = SpriteSystem(DISPLAYSURF, TILESIZE)
+turn_taking_system = TurnTakerSystem()
 
 world.add_processor(ai_system, priority=2)
 world.add_processor(movement_system, priority=0)
 world.add_processor(sprite_system, priority=0)
+world.add_processor(turn_taking_system, priority=1)
 
-PLAYER = world.create_entity(Sprite(['assets/denizens/oryx_16bit_scifi_creatures_33.png', 'assets/denizens/oryx_16bit_scifi_creatures_34.png']),
-                             Position(),
-                             Velocity(),
-                             Fighter(health=100, max_health=100))
-
-MONSTER = world.create_entity(Sprite(['assets/denizens/oryx_16bit_scifi_creatures_553.png', 'assets/denizens/oryx_16bit_scifi_creatures_554.png']),
-                              Position(0, 0),
-                              Velocity(),
-                              Fighter(health=100, max_health=100))
+PLAYER = world.create_entity(
+    Sprite(['assets/denizens/oryx_16bit_scifi_creatures_33.png', 'assets/denizens/oryx_16bit_scifi_creatures_34.png']),
+    Position(),
+    Velocity(),
+    Fighter(health=100, max_health=100, agility=2),
+    TurnTaker())
+MONSTER = world.create_entity(Sprite(
+    ['assets/denizens/oryx_16bit_scifi_creatures_553.png', 'assets/denizens/oryx_16bit_scifi_creatures_554.png']),
+    Position(0, 0),
+    Velocity(),
+    Fighter(health=100, max_health=100, agility=1),
+    TurnTaker(),
+    AI(agility=1))
 
 x_pos, y_pos = place_in_random_room(PLAYER)
 place_in_random_room(MONSTER)
+
 camera = world.create_entity(Position(x_pos - 1, y_pos - 1),
                              Velocity(),
                              Camera(target=PLAYER))
 
 message_handler.messages.append(messages_Message('Welcome to <Game Name>.', 'warning'))
+turn_taking_system.register(world.component_for_entity(PLAYER, Fighter))
+turn_taking_system.register(world.component_for_entity(MONSTER, AI))
 
 while True:
     clock.tick(10)
@@ -198,13 +211,24 @@ while True:
 
     health = message_handler.font.render('Health:', 1, COMPLEMENTARY.shades[4])
     DISPLAYSURF.blit(health, (1025, 795))
-    health = message_handler.font.render(str(player_fighter.health) + '/' + str(player_fighter.health), 1,
+    health = message_handler.font.render(str(player_fighter.health) + '/' + str(player_fighter.max_health), 1,
                                          COMPLEMENTARY.shades[4])
-    DISPLAYSURF.blit(health, (1100, 795))
+    DISPLAYSURF.blit(health, (1110, 795))
+
+    agility = message_handler.font.render('Agility:', 1, COMPLEMENTARY.shades[4])
+    DISPLAYSURF.blit(agility, (1025, 820))
+    agility = message_handler.font.render(str(player_fighter.agility), 1,
+                                          COMPLEMENTARY.shades[4])
+    DISPLAYSURF.blit(agility, (1110, 820))
 
     pygame.draw.rect(DISPLAYSURF, TERTIARY.shades[4], (0, WINDOW_HEIGHT, WINDOW_WIDTH, MESSAGE_BOX_SIZE), 1)
     pygame.draw.rect(DISPLAYSURF, TERTIARY.shades[4], (MINIMAP_PANEL_LEFT, 0, MINIMAP_WIDTH, WINDOW_HEIGHT + 1), 1)
     pygame.draw.rect(DISPLAYSURF, TERTIARY.shades[4], (MINIMAP_PANEL_LEFT, 0, MINIMAP_WIDTH, MINIMAP_HEIGHT), 1)
     pygame.draw.line(DISPLAYSURF, TERTIARY.shades[4], (STATS_PANEL_LEFT, WINDOW_HEIGHT),
                      (STATS_PANEL_LEFT, WINDOW_HEIGHT + MESSAGE_BOX_SIZE))
+
+    turns = message_handler.font.render('Turns:', 1, TERTIARY.shades[2])
+    DISPLAYSURF.blit(turns, (MINIMAP_PANEL_LEFT + 10, MINIMAP_HEIGHT))
+    turns = message_handler.font.render(str(turn_taking_system.turns), 1, TERTIARY.shades[2])
+    DISPLAYSURF.blit(turns, (MINIMAP_PANEL_LEFT + 80, MINIMAP_HEIGHT))
     pygame.display.update()

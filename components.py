@@ -4,8 +4,13 @@ import pygame
 
 
 class AI:
-    def __init__(self):
-        super().__init__()
+    def __init__(self, agility=0):
+        self.agility = agility
+        self.is_turn = False
+
+    def take_turn(self):
+        self.is_turn = True
+        return 1
 
 
 class Camera:
@@ -16,9 +21,13 @@ class Camera:
 
 
 class Fighter:
-    def __init__(self, health=0, max_health=0):
+    def __init__(self, health=0, max_health=0, agility=0):
         self.max_health = max_health
         self.health = health
+        self.agility = agility
+
+    def take_turn(self):
+        return 1
 
 
 class Position:
@@ -50,6 +59,11 @@ class Sprite(pygame.sprite.Sprite):
             print('Cannot load image:', fullname)
             raise SystemExit(message)
         return image
+
+
+class TurnTaker:
+    def __init__(self):
+        super(TurnTaker, self).__init__()
 
 
 class Velocity:
